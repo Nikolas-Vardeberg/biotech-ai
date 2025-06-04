@@ -12,21 +12,22 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchGenomes = async () => { 
+    const fetchGenomes = async () => {
       try {
         setIsLoading(true);
         const data = await getAvailableGenomes();
         if (data.genomes && data.genomes["Human"]) {
-          setGenomes(data.genomes["Human"])
+          setGenomes(data.genomes["Human"]);
         }
       } catch (err) {
-        setError("Failed to load genome data")
+        setError("Failed to load genome data");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
-    fetchGenomes;
-  }, [])
+    };
+    fetchGenomes();
+  }, []);
+
 
   const handleGenomeChange = (value: string) => {
     setSelectedGenome(value);
@@ -63,7 +64,7 @@ export default function HomePage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pb-4">
+           <CardContent className="pb-4">
             <Select
               value={selectedGenome}
               onValueChange={handleGenomeChange}
@@ -74,19 +75,19 @@ export default function HomePage() {
               </SelectTrigger>
               <SelectContent>
                 {genomes.map((genome) => (
-                  <SelectItem
-                    key={genome.id}
-                    value={genome.id}
-                  >
-                    {genome.name} - {genome.sourceName}
-                    {genome.active ? " (active)": ""}
+                  <SelectItem key={genome.id} value={genome.id}>
+                    {genome.id} - {genome.name}
+                    {genome.active ? " (active)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {selectedGenome && (
-              <p className="mt-2 text-sm text-[#3c4f3d]/60">
-                {genomes.find((genome) => genome.id === selectedGenome) ?.sourceName}
+              <p className="mt-2 text-xs text-[#3c4f3d]/60">
+                {
+                  genomes.find((genome) => genome.id === selectedGenome)
+                    ?.sourceName
+                }
               </p>
             )}
           </CardContent>

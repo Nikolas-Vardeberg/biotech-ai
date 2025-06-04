@@ -6,34 +6,32 @@ export interface GenomeAssemblyFromSearch {
 }
 
 export async function getAvailableGenomes() {
-    const apiUrl = "https://api.genome.ucsc.edu/list/ucscGenomes";
-    const response = await fetch(apiUrl);
+  const apiUrl = "https://api.genome.ucsc.edu/list/ucscGenomes";
+  const response = await fetch(apiUrl);
+  if (!response.ok) {
+    throw new Error("Failed to fetch genome list from UCSC API");
+  }
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch genome list from USC API")
-    }
+  const genomeData = await response.json();
+  if (!genomeData.ucscGenomes) {
+    throw new Error("UCSC API error: missing ucscGenomes");
+  }
 
-    const genomeData = await response.json();
-    if (!genomeData.ucscGenomes) {
-        throw new Error("UCSC API Erorr: missing genmoes")
-    }    
+  const genomes = genomeData.ucscGenomes;
+  const structuredGenomes: Record<string, GenomeAssemblyFromSearch[]> = {};
 
-    const genomes = genomeData.ucscGenomes;
-    const structuredGenomes: Record<string, GenomeAssemblyFromSearch[]> = {};
+  for (const genomeId in genomes) {
+    const genomeInfo = genomes[genomeId];
+    const organism = genomeInfo.organism || "Other";
 
-    for (const genomeId in genomes) {
-        const genomeInfo = genomes[genomeId];
-        const organism = genomeData.organism || "Other";
+    if (!structuredGenomes[organism]) structuredGenomes[organism] = [];
+    structuredGenomes[organism].push({
+      id: genomeId,
+      name: genomeInfo.description || genomeId,
+      sourceName: genomeInfo.sourceName || genomeId,
+      active: !!genomeInfo.active,
+    });
+  }
 
-        if (!structuredGenomes[organism]) structuredGenomes[organism] = [];
-
-        structuredGenomes[organism].push({
-            id: genomeId,
-            name: genomeInfo.description || genomeId,
-            sourceName: genomeInfo.sourceName || genomeId,
-            active: !!genomeInfo.active,
-        })
-    }
-
-    return { genomes: structuredGenomes }
+  return { genomes: structuredGenomes };
 }
