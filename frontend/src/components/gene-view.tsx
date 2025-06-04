@@ -1,111 +1,212 @@
-"use client"
+"use client";
 
-import { fetchGeneDetails,  fetchGeneSequence as apiFetchGeneSequence, type GeneBounds, type GeneDetailsFromSearch, type GeneFromSearch } from "~/utils/genome-api";
+import {
+  fetchGeneDetails,
+  fetchGeneSequence as apiFetchGeneSequence,
+  type GeneBounds,
+  type GeneDetailsFromSearch,
+  type GeneFromSearch,
+  type ClinvarVariant,
+} from "~/utils/genome-api";
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GeneInformation } from "./gene-information";
+import { GeneSequence } from "./gene-sequence";
 
 export default function GeneViewer({
-    gene,
-    genomeId,
-    onClose,
+  gene,
+  genomeId,
+  onClose,
 }: {
-    gene: GeneFromSearch;
-    genomeId: string;
-    onClose: () => void;
+  gene: GeneFromSearch;
+  genomeId: string;
+  onClose: () => void;
 }) {
-    const [geneSequence, setGeneSequence] = useState("");
-    const [geneDetail, setGeneDetail] = useState<GeneDetailsFromSearch | null>(null);
-    const [geneBounds, setGeneBounds] = useState<GeneBounds | null>(null);    
-    
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const [geneSequence, setGeneSequence] = useState("");
+  const [geneDetail, setGeneDetail] = useState<GeneDetailsFromSearch | null>(
+    null,
+  );
+  const [geneBounds, setGeneBounds] = useState<GeneBounds | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const [startPosition, setStartPosition] = useState<string>("");
-    const [endPosition, setEndPosition] = useState<string>("");
-    const [isLoadingSequence, setIsLoadingSequence] = useState(false);
+  const [startPosition, setStartPosition] = useState<string>("");
+  const [endPosition, setEndPosition] = useState<string>("");
+  const [isLoadingSequence, setIsLoadingSequence] = useState(false);
 
-    const [actualRange, setActualRange] = useState<{ start: number; end: number; } | null>(null);
+  const [clinvarVariants, setClinvarVariants] = useState<ClinvarVariant[]>([]);
+  const [isLoadingClinvar, setIsLoadingClinvar] = useState(false);
+  const [clinvarError, setClinvarError] = useState<string | null>(null);
 
-    const fetchGeneSequence = useCallback(
-        async (start: number, end: number) => {
-            try {
-                setIsLoadingSequence(true);
-                setError(null);
+  const [actualRange, setActualRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
 
-                const {
-                  sequence,
-                  actualRange: fetchedRange,
-                  error: apiError,
-                } = await apiFetchGeneSequence(gene.chrom, start, end, genomeId);
+  const [comparisonVariant, setComparisonVariant] =
+    useState<ClinvarVariant | null>(null);
 
-                setGeneSequence(sequence);
-                setActualRange(fetchedRange);
+  const [activeSequencePosition, setActiveSequencePosition] = useState<
+    number | null
+  >(null);
+  const [activeReferenceNucleotide, setActiveReferenceNucleotide] = useState<
+    string | null
+  >(null);
 
-                if (apiError) {
-                    setError(apiError);
-                }
-            } catch (error) {
-                setError("Failed to load sequence data");
-            } finally {
-                setIsLoadingSequence(false);
-            }
-        },
-        [gene.chrom, genomeId],
+  const updateClinvarVariant = (
+    clinvar_id: string,
+    updateVariant: ClinvarVariant,
+  ) => {
+    setClinvarVariants((currentVariants) =>
+      currentVariants.map((v) =>
+        v.clinvar_id == clinvar_id ? updateVariant : v,
+      ),
     );
+  };
 
-    useEffect(() => {
-        const initializeGeneData = async () => {
-            setIsLoading(true);
+  const fetchGeneSequence = useCallback(
+    async (start: number, end: number) => {
+      try {
+        setIsLoadingSequence(true);
+        setError(null);
 
-            if (!gene.gene_id) {
-              setError("Gene ID is missing, cannot fetch details");
-              setIsLoading(false);
-              return;
-            }
+        const {
+          sequence,
+          actualRange: fetchedRange,
+          error: apiError,
+        } = await apiFetchGeneSequence(gene.chrom, start, end, genomeId);
 
-            try {
-                const {
-                    geneDetails: fetchedDetail,
-                    geneBounds: fetchedGeneBounds,
-                    initialRange: fetchedRange,
-                } = await fetchGeneDetails(gene.gene_id);
+        setGeneSequence(sequence);
+        setActualRange(fetchedRange);
 
-                setGeneDetail(fetchedDetail);
-                setGeneBounds(fetchedGeneBounds);
+        if (apiError) {
+          setError(apiError);
+        }
+      } catch (err) {
+        setError("Failed to load sequence data");
+      } finally {
+        setIsLoadingSequence(false);
+      }
+    },
+    [gene.chrom, genomeId],
+  );
 
-                if (fetchedRange) {
-                    setStartPosition(String(fetchedRange.start));
-                    setEndPosition(String(fetchedRange.end));
-                    await fetchGeneSequence(fetchedRange.start, fetchedRange.end);
-                }
-            } catch {
-                setError("Failed to load gene information. Please try again.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        initializeGeneData();
-    }, [gene, genomeId]);
+  useEffect(() => {
+    const initializeGeneData = async () => {
+      setIsLoading(true);
 
-    return(
-        <div className="space-y-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="cursor-pointer text-[#3c4f3d] hover:bg-[#e9eeea]/70"
-              onClick={onClose}
-            >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to results
-            </Button>
+      if (!gene.gene_id) {
+        setError("Gene ID is missing, cannot fetch details");
+        setIsLoading(false);
+        return;
+      }
 
-            <GeneInformation
-                gene={gene}
-                geneDetail={geneDetail}
-                geneBounds={geneBounds}
-            />
+      try {
+        const {
+          geneDetails: fetchedDetail,
+          geneBounds: fetchedGeneBounds,
+          initialRange: fetchedRange,
+        } = await fetchGeneDetails(gene.gene_id);
+
+        setGeneDetail(fetchedDetail);
+        setGeneBounds(fetchedGeneBounds);
+
+        if (fetchedRange) {
+          setStartPosition(String(fetchedRange.start));
+          setEndPosition(String(fetchedRange.end));
+          await fetchGeneSequence(fetchedRange.start, fetchedRange.end);
+        }
+      } catch {
+        setError("Faield to load gene information. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeGeneData();
+  }, [gene, genomeId]);
+
+  const handleLoadSequence = useCallback(() => {
+    const start = parseInt(startPosition);
+    const end = parseInt(endPosition);
+    let validationError: string | null = null;
+
+    if (isNaN(start) || isNaN(end)) {
+      validationError = "Please enter valid start and end positions";
+    } else if (start >= end) {
+      validationError = "Start position must be less than end position";
+    } else if (geneBounds) {
+      const minBound = Math.min(geneBounds.min, geneBounds.max);
+      const maxBound = Math.max(geneBounds.min, geneBounds.max);
+      if (start < minBound) {
+        validationError = `Start position (${start.toLocaleString()}) is below the minimum value (${minBound.toLocaleString()})`;
+      } else if (end > maxBound) {
+        validationError = `End position (${end.toLocaleString()}) exceeds the maximum value (${maxBound.toLocaleString()})`;
+      }
+
+      if (end - start > 10000) {
+        validationError = `Selected range exceeds maximum view range of 10.000 bp.`;
+      }
+    }
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    fetchGeneSequence(start, end);
+  }, [startPosition, endPosition, fetchGeneSequence, geneBounds]);
+
+  const showComparison = (variant: ClinvarVariant) => {
+    if (variant.evo2Result) {
+      setComparisonVariant(variant);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-800"></div>
       </div>
-    )
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="cursor-pointer text-[#3c4f3d] hover:bg-[#e9eeea]/70"
+        onClick={onClose}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to results
+      </Button>
+
+      <GeneSequence
+        geneBounds={geneBounds}
+        geneDetail={geneDetail}
+        startPosition={startPosition}
+        endPosition={endPosition}
+        onStartPositionChange={setStartPosition}
+        onEndPositionChange={setEndPosition}
+        sequenceData={geneSequence}
+        sequenceRange={actualRange}
+        isLoading={isLoadingSequence}
+        error={error}
+        onSequenceLoadRequest={handleLoadSequence}
+        onSequenceClick={() => {}}
+        maxViewRange={10000}
+      />
+
+      <GeneInformation
+        gene={gene}
+        geneDetail={geneDetail}
+        geneBounds={geneBounds}
+      />
+
+    </div>
+  );
 }

@@ -23,7 +23,7 @@ import {
 } from "~/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
-  type ChromosomeFromSearch,
+  type ChromosomeFromSeach,
   type GeneFromSearch,
   type GenomeAssemblyFromSearch,
   getAvailableGenomes,
@@ -36,7 +36,7 @@ type Mode = "browse" | "search";
 export default function HomePage() {
   const [genomes, setGenomes] = useState<GenomeAssemblyFromSearch[]>([]);
   const [selectedGenome, setSelectedGenome] = useState<string>("hg38");
-  const [chromosomes, setChromosomes] = useState<ChromosomeFromSearch[]>([]);
+  const [chromosomes, setChromosomes] = useState<ChromosomeFromSeach[]>([]);
   const [selectedChromosome, setSelectedChromosome] = useState<string>("chr1");
   const [selectedGene, setSelectedGene] = useState<GeneFromSearch | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
