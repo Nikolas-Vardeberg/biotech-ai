@@ -4,6 +4,7 @@ import { fetchGeneDetails,  fetchGeneSequence as apiFetchGeneSequence, type Gene
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { GeneInformation } from "./gene-information";
 
 export default function GeneViewer({
     gene,
@@ -99,6 +100,12 @@ export default function GeneViewer({
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to results
             </Button>
+
+            <GeneInformation
+                gene={gene}
+                geneDetail={geneDetail}
+                geneBounds={geneBounds}
+            />
       </div>
     )
 }
