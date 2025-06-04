@@ -193,3 +193,41 @@ export async function fetchGeneDetails(geneId: string): Promise<{
     return { geneDetails: null, geneBounds: null, initialRange: null };
   }
 }
+
+export async function fetchGeneSequence(
+  chrom: string,
+  start: number,
+  end: number,
+  genomeId: string,
+): Promise<{
+  sequence: string;
+  actualRange: { start: number; end: number };
+  error?: string;
+}> {
+  try {
+    const chromosome = chrom.startsWith("chr") ? chrom : `chr${chrom}`;
+
+    const apiStart = start - 1;
+    const apiEnd = end;
+
+    const apiUrl = `https://api.genome.ucsc.edu/getData/sequence?genome=${genomeId};chrom=${chromosome};start=${apiStart};end=${apiEnd}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+
+    const actualRange = { start, end };
+
+    if (data.error || !data.dna) {
+      return { sequence: "", actualRange, error: data.error };
+    }
+
+    const sequence = data.dna.toUpperCase();
+
+    return { sequence, actualRange };
+  } catch (err) {
+    return {
+      sequence: "",
+      actualRange: { start, end },
+      error: "Internal error in fetch gene sequence",
+    };
+  }
+}
