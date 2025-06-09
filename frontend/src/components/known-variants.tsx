@@ -1,8 +1,8 @@
-import type { ClinvarVariant, GeneFromSearch } from "~/utils/genome-api";
+import { analyzeVariantWithAPI, type ClinvarVariant, type GeneFromSearch } from "~/utils/genome-api";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { BarChart2, ExternalLink, Shield, Zap } from "lucide-react";
+import { BarChart2, ExternalLink, RefreshCcw, Search, Shield, Zap } from "lucide-react";
 import { getClassificationColorClasses } from "~/lib/coloring-utils";
 
 export default function KnownVariants({
@@ -47,6 +47,32 @@ export default function KnownVariants({
             ...variant,
             isAnalyzing: true,
         })
+
+        try {
+            const data = await analyzeVariantWithAPI({
+                positon: variantDetails.position,
+                alternative: variantDetails.alternative,
+                genomeId: genomeId,
+                chromosome: gene.chrom,
+            })
+
+            const updateVariant: ClinvarVariant = {
+                ...variant,
+                isAnalyzing: false,
+                evo2Result: data,
+            }
+
+            updateClinvarVariant(variant.clinvar_id, updateVariant);
+
+            showComparison(updateVariant);
+
+        } catch (error) {
+            updateClinvarVariant(variant.clinvar_id, {
+                ...variant,
+                isAnalyzing: false,
+                evo2Error: error instanceof Error ? error.message : "Analysing failed"
+            })
+        }
     }
 
     return(
@@ -62,6 +88,7 @@ export default function KnownVariants({
                     disabled={isLoadingClinvar}
                     className="h-7 cursor-pointer text-sm text-[#3c4f3d] hover:bg-[#e9eeea]/70"
                 >
+                    <RefreshCcw className="mr-1 h-3 w-3" />
                     Refresh
                 </Button>
             </CardHeader>
@@ -144,6 +171,7 @@ export default function KnownVariants({
                                                             size="sm"
                                                             className="h-7 cursor-pointer border-[#3c4f3d]/20 bg-[#e9eeea] px-3 text-xs text-[#3c4f3d] hover:bg-[#3c4f3d]/10"
                                                             disabled={variant.isAnalyzing}
+                                                            onClick={() => analyzeVariant(variant)}
                                                         >
                                                             {variant.isAnalyzing ? (
                                                                 <>
@@ -177,7 +205,12 @@ export default function KnownVariants({
                         </Table>
                     </div>
                 ) : (
-                    <></>
+                    <div className="flex h-48 flex-col items-center justify-center text-center text-gray-400">
+                        <Search className="mb-4 h-10 w-10 text-gray-300" />
+                        <p className="text-sm leading-relaxed">
+                            No ClinVar variants found for this gene.
+                        </p>
+                    </div>
                 ) 
                 }
             </CardContent>  

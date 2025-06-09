@@ -349,3 +349,33 @@ export async function fetchClinvarVariants(
 
   return variants;
 }
+
+export async function analyzeVariantWithAPI({
+  positon,
+  alternative,
+  genomeId,
+  chromosome
+}: {
+  positon: number;
+  alternative: string;
+  genomeId: string;
+  chromosome: string;
+}): Promise<AnalysisResult> {
+  const queryParams = new URLSearchParams({
+    variant_position: positon.toString(),
+    alternative: alternative,
+    genome: genomeId,
+    chromosome: chromosome,
+  })
+
+  const url = `${env.NEXT_PUBLIC_ANALYSE_SINGLE_VARIANT_BASE_URL}?${queryParams.toString()}`
+
+  const response = await fetch(url, { method: "POST" });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error("Failed to analyze variant " + errorText)
+  }
+
+  return await response.json();
+}
