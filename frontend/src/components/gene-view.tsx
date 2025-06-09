@@ -3,6 +3,7 @@
 import {
   fetchGeneDetails,
   fetchGeneSequence as apiFetchGeneSequence,
+  fetchClinvarVariants as apiFetchClinvarVariants,
   type GeneBounds,
   type GeneDetailsFromSearch,
   type GeneFromSearch,
@@ -13,6 +14,7 @@ import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GeneInformation } from "./gene-information";
 import { GeneSequence } from "./gene-sequence";
+import KnownVariants from "./known-variants";
 
 export default function GeneViewer({
   gene,
@@ -159,6 +161,34 @@ export default function GeneViewer({
     fetchGeneSequence(start, end);
   }, [startPosition, endPosition, fetchGeneSequence, geneBounds]);
 
+  const fetchClinvarVariants = async () => {
+    if (!gene.chrom || !geneBounds) return;
+
+    setIsLoadingClinvar(true);
+    setClinvarError(null);
+
+    try {
+      const variants = await apiFetchClinvarVariants(
+        gene.chrom,
+        geneBounds,
+        genomeId,
+      );
+      setClinvarVariants(variants);
+      console.log(variants);
+    } catch (error) {
+      setClinvarError("Failed to fetch ClinVar variants");
+      setClinvarVariants([]);
+    } finally {
+      setIsLoadingClinvar(false);
+    }
+  };
+
+  useEffect(() => {
+    if (geneBounds) {
+      fetchClinvarVariants();
+    }
+  }, [geneBounds]);
+
   const showComparison = (variant: ClinvarVariant) => {
     if (variant.evo2Result) {
       setComparisonVariant(variant);
@@ -185,6 +215,17 @@ export default function GeneViewer({
         Back to results
       </Button>
 
+      <KnownVariants
+        refreshVariants={fetchClinvarVariants}
+        showComparison={showComparison}
+        updateClinvarVariant={updateClinvarVariant}
+        clinvarVariants={clinvarVariants}
+        isLoadingClinvar={isLoadingClinvar}
+        clinvarError={clinvarError}
+        genomeId={genomeId}
+        gene={gene}
+      />
+
       <GeneSequence
         geneBounds={geneBounds}
         geneDetail={geneDetail}
@@ -206,7 +247,6 @@ export default function GeneViewer({
         geneDetail={geneDetail}
         geneBounds={geneBounds}
       />
-
     </div>
   );
 }
